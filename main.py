@@ -16,7 +16,7 @@ def main():
     df_fidelity = pd.read_csv(file_path, encoding='latin1', skip_blank_lines=True)
     # print(df_fidelity.head())
 
-    print(f"Loaded data from {file_path}\n")
+    print(f"Load data from {file_path}\n")
 
     # Remove the row with Symbol == "RFGTX"
     df_fidelity = df_fidelity[df_fidelity["Symbol"] != "RFGTX"]
@@ -36,7 +36,7 @@ def main():
     # filter_list_cash_fidelity = ["HELD IN MONEY MARKET", "FDIC-INSURED DEPOSIT SWEEP"]
 
     # Filter rows where "Symbol" is in the specified cash list
-    filter_list_cash_fidelity = ["SPAXX**", "FDRXX**", "CORE**", "USD***"]
+    filter_list_cash_fidelity = ["SPAXX**", "FDRXX**", "CORE**", "USD***", "Pending Activity"]
 
     filtered_df_cash_fidelity = df_fidelity[df_fidelity["Symbol"].isin(filter_list_cash_fidelity)]
 
@@ -47,7 +47,7 @@ def main():
     # Calculate and print the percentage of value_cash_fidelity to total_current_value_fidelity
     if total_current_value_fidelity != 0:
         percent_cash = (value_cash_fidelity / total_current_value_fidelity) * 100
-        print(f"Cash as percentage of total: {percent_cash:.1f}%\n")
+        print(f"Cash as percentage of total: {percent_cash:.2f}%\n")
     else:
         print("Total current value is zero, cannot compute percentage.")
 
@@ -78,6 +78,9 @@ def main():
     # Reorder columns for display
     grouped_fidelity = grouped_fidelity[["Group", "Description", "Current Value", "Percentage of Total"]]
 
+    # Remove rows where Percentage of Total is less than 0.10%
+    grouped_fidelity = grouped_fidelity[grouped_fidelity["Percentage of Total"] >= 0.005]
+
     # Format columns for CSV output to match terminal print
     grouped_fidelity_formatted = grouped_fidelity.copy()
     grouped_fidelity_formatted["Current Value"] = grouped_fidelity_formatted["Current Value"].map("${:,.2f}".format)
@@ -104,6 +107,8 @@ def main():
     file_path = os.path.join(data_dir, files[0])
     df_charles = pd.read_csv(file_path, encoding='latin1', skip_blank_lines=True)
     # print(df_charles.head())
+
+    print(f"\nLoad data from {file_path}")
 
     # --- Begin Charles block extraction ---
     blocks = []
@@ -138,8 +143,8 @@ def main():
         # Remove rows where 'Symbol' is one of the distinct account names or "Account Total"
         account_names = set(df_charles_clean["Account Name"].dropna().unique())
         df_charles_clean = df_charles_clean[~df_charles_clean["Symbol"].isin(account_names.union({"Account Total"}))]
-        print("\nCleaned Charles DataFrame:\n")
-        print(df_charles_clean)
+        # print("\nCleaned Charles DataFrame:\n")
+        # print(df_charles_clean)
 
         # Clean and sum all the values in the "Current Value" column for Charles
         df_charles_clean["Current Value"] = (
@@ -153,12 +158,9 @@ def main():
     else:
         print("No valid blocks found in Charles data.")
 
-    # # Filter rows where "Symbol" is in the specified cash list
-    # filter_list_cash_charles = ["SGVT", "Cash & Cash Investments"]
-
 
     # Filter rows where "Symbol" is in the specified cash list
-    filter_list_cash_charles = ["SGVT", "Cash & Cash Investments"]
+    filter_list_cash_charles = ["SGVT", "SGOV", "Cash & Cash Investments"]
     filtered_df_cash_charles = df_charles_clean[df_charles_clean["Symbol"].isin(filter_list_cash_charles)]
 
     # Sum the "Current Value" for the filtered DataFrame
@@ -168,7 +170,7 @@ def main():
     # Calculate and print the percentage of value_cash_charles to total_current_value_charles
     if total_current_value_charles != 0:
         percent_cash_charles = (value_cash_charles / total_current_value_charles) * 100
-        print(f"Cash as percentage of total: {percent_cash_charles:.1f}%\n")
+        print(f"Cash as percentage of total: {percent_cash_charles:.2f}%\n")
     else:
         print("Total current value is zero, cannot compute percentage.")
 
@@ -198,6 +200,9 @@ def main():
 
     # Reorder columns for display
     grouped_charles = grouped_charles[["Group", "Description", "Current Value", "Percentage of Total"]]
+
+    # Remove rows where Percentage of Total is less than 0.10%
+    grouped_charles = grouped_charles[grouped_charles["Percentage of Total"] >= 0.005]
 
     # Format columns for CSV output to match terminal print
     grouped_charles_formatted = grouped_charles.copy()
@@ -246,6 +251,9 @@ def main():
     # Reorder columns
     merged = merged[["Group", "Description", "Current Value", "Percentage of Total"]]
 
+    # Remove rows where Percentage of Total is less than 0.10%
+    merged = merged[merged["Percentage of Total"] >= 0.005]
+
     # Format for CSV output
     merged_formatted = merged.copy()
     merged_formatted["Current Value"] = merged_formatted["Current Value"].map("${:,.2f}".format)
@@ -253,6 +261,8 @@ def main():
 
     # Save to CSV
     merged_formatted.to_csv("data/grouped_merged.csv", index=False)
+
+    print(f"\nTotal Merged Current Value: ${round(total_merged):,}")
 
     print("\nMerged Current Value by Group as Percentage of Total:\n")
     print(merged.to_string(index=False, formatters={

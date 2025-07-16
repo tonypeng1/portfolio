@@ -14,12 +14,16 @@ def main():
 
     file_path = os.path.join(data_dir, files[0])
     df_fidelity = pd.read_csv(file_path, encoding='latin1', skip_blank_lines=True)
+    # Remove non-ASCII characters from column names
+    df_fidelity.columns = df_fidelity.columns.str.strip().str.replace(r"[^\x00-\x7F]+", "", regex=True)
     # print(df_fidelity.head())
 
     print(f"Load data from {file_path}\n")
 
-    # Remove the row with Symbol == "RFGTX"
-    df_fidelity = df_fidelity[df_fidelity["Symbol"] != "RFGTX"]
+    # Remove the row with Account Number == "32213"
+    df_fidelity = df_fidelity[df_fidelity["Account Number"] != "32213"]
+    # Remove the row with Account Number == "X77788987"
+    df_fidelity = df_fidelity[df_fidelity["Account Number"] != "X77788987"]
 
     # Clean and sum all the values in the "Current Value" column
     df_fidelity["Current Value"] = (
@@ -95,7 +99,103 @@ def main():
         "Percentage of Total": "{:.2f}%".format
     }))
 
-    
+
+
+    # Find the only file in the data/data_fidelity_simon directory
+    data_dir = "data/data_fidelity_simon"
+    files = [f for f in os.listdir(data_dir) if os.path.isfile(os.path.join(data_dir, f)) and f.lower().endswith(".csv")]
+    if not files:
+        print("No files found in data/data_fidelity_simon.")
+        return
+
+    file_path = os.path.join(data_dir, files[0])
+    df_fidelity = pd.read_csv(file_path, encoding='latin1', skip_blank_lines=True)
+    # Remove non-ASCII characters from column names
+    df_fidelity.columns = df_fidelity.columns.str.strip().str.replace(r"[^\x00-\x7F]+", "", regex=True)
+    # print(df_fidelity.head())
+
+    print(f"Load data from {file_path}\n")
+
+    # Remove the row with Account Number == "84479"
+    df_fidelity = df_fidelity[df_fidelity["Account Number"] != "84479"]
+    # Remove the row with Account Number == "X77788987"
+    df_fidelity = df_fidelity[df_fidelity["Account Number"] != "X77788987"]
+
+    # Clean and sum all the values in the "Current Value" column
+    df_fidelity["Current Value"] = (
+        df_fidelity["Current Value"]
+        .astype(str)
+        .str.replace(r"[\$,]", "", regex=True)
+        .replace("--", "0")
+    )
+    df_fidelity["Current Value"] = pd.to_numeric(df_fidelity["Current Value"], errors="coerce")
+    total_current_value_fidelity = df_fidelity["Current Value"].sum()
+    print(f"Total Fidelity Current Value: ${round(total_current_value_fidelity):,}\n")
+
+    # # Filter rows where "Description" is in the specified cash list
+    # filter_list_cash_fidelity = ["HELD IN MONEY MARKET", "FDIC-INSURED DEPOSIT SWEEP"]
+
+    # Filter rows where "Symbol" is in the specified cash list
+    filter_list_cash_fidelity = ["SPAXX**", "FDRXX**", "CORE**", "USD***", "Pending Activity"]
+
+    filtered_df_cash_fidelity = df_fidelity[df_fidelity["Symbol"].isin(filter_list_cash_fidelity)]
+
+    # Sum the "Current Value" for the filtered DataFrame
+    value_cash_fidelity = filtered_df_cash_fidelity["Current Value"].sum()
+    print(f"Total Current Value for {filter_list_cash_fidelity}: ${round(value_cash_fidelity):,}\n")
+
+    # Calculate and print the percentage of value_cash_fidelity to total_current_value_fidelity
+    if total_current_value_fidelity != 0:
+        percent_cash = (value_cash_fidelity / total_current_value_fidelity) * 100
+        print(f"Cash as percentage of total: {percent_cash:.2f}%\n")
+    else:
+        print("Total current value is zero, cannot compute percentage.")
+
+
+    # Create a new 'Group' column: 'Cash' for cash descriptions, else use the original description
+    df_fidelity["Group"] = df_fidelity["Symbol"].apply(
+        lambda x: "Cash" if x in filter_list_cash_fidelity else x
+    )
+
+    # Group by 'Group', sum 'Current Value', and calculate percentage of total
+    grouped_fidelity_simon = (
+        df_fidelity.groupby("Group")["Current Value"]
+        .sum()
+        .reset_index()
+        .sort_values("Current Value", ascending=False)
+    )
+    grouped_fidelity_simon["Percentage of Total"] = (grouped_fidelity_simon["Current Value"] / total_current_value_fidelity) * 100
+
+    # Add 'Symbol' to the grouped DataFrame: empty for 'Cash', else the group name (which is the Symbol)
+    grouped_fidelity_simon["Symbol"] = grouped_fidelity_simon["Group"].apply(lambda x: "" if x == "Cash" else x)
+
+    # Create a mapping from Symbol to Description
+    symbol_to_description = df_fidelity.set_index("Symbol")["Description"].to_dict()
+
+    # Add 'Description' to the grouped DataFrame: blank for 'Cash', else map from Symbol
+    grouped_fidelity_simon["Description"] = grouped_fidelity_simon["Group"].apply(lambda x: "" if x == "Cash" else symbol_to_description.get(x, ""))
+
+    # Reorder columns for display
+    grouped_fidelity_simon = grouped_fidelity_simon[["Group", "Description", "Current Value", "Percentage of Total"]]
+
+    # Remove rows where Percentage of Total is less than 0.10%
+    grouped_fidelity_simon = grouped_fidelity_simon[grouped_fidelity_simon["Percentage of Total"] >= 0.005]
+
+    # Format columns for CSV output to match terminal print
+    grouped_fidelity_simon_formatted = grouped_fidelity_simon.copy()
+    grouped_fidelity_simon_formatted["Current Value"] = grouped_fidelity_simon_formatted["Current Value"].map("${:,.2f}".format)
+    grouped_fidelity_simon_formatted["Percentage of Total"] = grouped_fidelity_simon_formatted["Percentage of Total"].map("{:.2f}%".format)
+
+    # Save grouped_fidelity_simon to CSV in the data/ folder
+    grouped_fidelity_simon_formatted.to_csv("data/grouped_fidelity_simon.csv", index=False)
+
+    print("Current Value by Group as Percentage of Total (Fidelity):\n")
+    print(grouped_fidelity_simon.to_string(index=False, formatters={
+        "Current Value": "${:,.2f}".format,
+        "Percentage of Total": "{:.2f}%".format
+    }))
+
+
     
     # Find the only file in the data/data_charles directory
     data_dir = "data/data_charles"
@@ -217,6 +317,7 @@ def main():
         "Current Value": "${:,.2f}".format,
         "Percentage of Total": "{:.2f}%".format
     }))
+
 
 
     # Merge the two grouped DataFrames, keeping both Description columns

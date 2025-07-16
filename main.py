@@ -114,7 +114,7 @@ def main():
     df_fidelity.columns = df_fidelity.columns.str.strip().str.replace(r"[^\x00-\x7F]+", "", regex=True)
     # print(df_fidelity.head())
 
-    print(f"Load data from {file_path}\n")
+    print(f"\nLoad data from {file_path}\n")
 
     # Remove the row with Account Number == "84479"
     df_fidelity = df_fidelity[df_fidelity["Account Number"] != "84479"]
@@ -320,56 +320,82 @@ def main():
 
 
 
-    # Merge the two grouped DataFrames, keeping both Description columns
+    # Before merging, rename Description and Current Value columns in grouped_charles
+    grouped_charles_renamed = grouped_charles.rename(
+        columns={"Description": "Description_charles", "Current Value": "Current Value_charles"}
+    )
+
     merged = pd.merge(
         grouped_fidelity[["Group", "Description", "Current Value"]],
-        grouped_charles[["Group", "Description", "Current Value"]],
+        grouped_fidelity_simon[["Group", "Description", "Current Value"]],
         on="Group",
         how="outer",
-        suffixes=("_fidelity", "_charles")
+        suffixes=("_fidelity", "_simon")
+    )
+
+    merged = pd.merge(
+        merged,
+        grouped_charles_renamed[["Group", "Description_charles", "Current Value_charles"]],
+        on="Group",
+        how="outer"
     )
 
     # Fill NaN with 0 for Current Value columns
     merged["Current Value_fidelity"] = merged["Current Value_fidelity"].fillna(0)
+    merged["Current Value_simon"] = merged["Current Value_simon"].fillna(0)
     merged["Current Value_charles"] = merged["Current Value_charles"].fillna(0)
 
     # Sum the Current Value columns
-    merged["Current Value"] = merged["Current Value_fidelity"] + merged["Current Value_charles"]
+    merged["Total Current Value"] = (
+        merged["Current Value_fidelity"] +
+        merged["Current Value_simon"] +
+        merged["Current Value_charles"]
+    )
 
-    # Choose Description: Fidelity if present, else Charles
-    merged["Description"] = merged["Description_fidelity"].combine_first(merged["Description_charles"])
-
-    # Drop the separate Description and Current Value columns
-    merged = merged.drop(columns=["Current Value_fidelity", "Current Value_charles", "Description_fidelity", "Description_charles"])
+    # Choose Description: Fidelity if present, else Simon, else Charles
+    merged["Description"] = (
+        merged["Description_fidelity"]
+        .combine_first(merged["Description_simon"])
+        .combine_first(merged["Description_charles"])
+    )
 
     # Recalculate Percentage of Total
-    total_merged = merged["Current Value"].sum()
-    merged["Percentage of Total"] = (merged["Current Value"] / total_merged) * 100
+    total_merged = merged["Total Current Value"].sum()
+    merged["Percentage of Total"] = (merged["Total Current Value"] / total_merged) * 100
 
     # Sort by Percentage of Total in descending order
     merged = merged.sort_values("Percentage of Total", ascending=False)
 
     # Reorder columns
-    merged = merged[["Group", "Description", "Current Value", "Percentage of Total"]]
+    merged = merged[["Group", "Description", "Total Current Value", "Percentage of Total"]]
 
     # Remove rows where Percentage of Total is less than 0.10%
     merged = merged[merged["Percentage of Total"] >= 0.005]
 
     # Format for CSV output
     merged_formatted = merged.copy()
-    merged_formatted["Current Value"] = merged_formatted["Current Value"].map("${:,.2f}".format)
+    merged_formatted["Total Current Value"] = merged_formatted["Total Current Value"].map("${:,.2f}".format)
     merged_formatted["Percentage of Total"] = merged_formatted["Percentage of Total"].map("{:.2f}%".format)
 
     # Save to CSV
     merged_formatted.to_csv("data/grouped_merged.csv", index=False)
 
     print(f"\nTotal Merged Current Value: ${round(total_merged):,}")
+    # Calculate and print cash as percentage of total for merged
+    cash_row = merged[merged["Group"] == "Cash"]
+    if not cash_row.empty:
+        cash_percent = cash_row["Percentage of Total"].values[0]
+        print(f"\nCash as percentage of total: {cash_percent:.2f}%")
+    else:
+        print("\nCash as percentage of total: 0.00%")
 
     print("\nMerged Current Value by Group as Percentage of Total:\n")
     print(merged.to_string(index=False, formatters={
-        "Current Value": "${:,.2f}".format,
+        "Total Current Value": "${:,.2f}".format,
         "Percentage of Total": "{:.2f}%".format
     }))
+
+    print("")
 
 if __name__ == "__main__":
     main()

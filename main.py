@@ -40,7 +40,7 @@ def main():
     # filter_list_cash_fidelity = ["HELD IN MONEY MARKET", "FDIC-INSURED DEPOSIT SWEEP"]
 
     # Filter rows where "Symbol" is in the specified cash list
-    filter_list_cash_fidelity = ["SPAXX**", "FDRXX**", "CORE**", "USD***", "Pending Activity"]
+    filter_list_cash_fidelity = ["SPAXX**", "FDRXX**", "CORE**", "USD***", "Pending Activity", "Pending activity"]
 
     filtered_df_cash_fidelity = df_fidelity[df_fidelity["Symbol"].isin(filter_list_cash_fidelity)]
 
@@ -136,7 +136,7 @@ def main():
     # filter_list_cash_fidelity = ["HELD IN MONEY MARKET", "FDIC-INSURED DEPOSIT SWEEP"]
 
     # Filter rows where "Symbol" is in the specified cash list
-    filter_list_cash_fidelity = ["SPAXX**", "FDRXX**", "CORE**", "USD***", "Pending Activity"]
+    filter_list_cash_fidelity = ["SPAXX**", "FDRXX**", "CORE**", "USD***", "Pending Activity", "Pending activity"]
 
     filtered_df_cash_fidelity = df_fidelity[df_fidelity["Symbol"].isin(filter_list_cash_fidelity)]
 

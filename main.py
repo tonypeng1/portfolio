@@ -20,9 +20,9 @@ def main():
 
     print(f"Load data from {file_path}\n")
 
-    # Remove the row with Account Number == "32213"
+    # Remove the row with Account Number == "32213" (Geospace Technologies)
     df_fidelity = df_fidelity[df_fidelity["Account Number"] != "32213"]
-    # Remove the row with Account Number == "X77788987"
+    # Remove the row with Account Number == "X77788987" (Cash Management)
     df_fidelity = df_fidelity[df_fidelity["Account Number"] != "X77788987"]
 
     # Clean and sum all the values in the "Current Value" column
@@ -46,7 +46,7 @@ def main():
 
     # Sum the "Current Value" for the filtered DataFrame
     value_cash_fidelity = filtered_df_cash_fidelity["Current Value"].sum()
-    print(f"Total Current Value for {filter_list_cash_fidelity}: ${round(value_cash_fidelity):,}\n")
+    print(f"Total Current Value for {filter_list_cash_fidelity}: ${round(value_cash_fidelity):,}")
 
     # Calculate and print the percentage of value_cash_fidelity to total_current_value_fidelity
     if total_current_value_fidelity != 0:
@@ -54,6 +54,24 @@ def main():
         print(f"Cash as percentage of total: {percent_cash:.2f}%\n")
     else:
         print("Total current value is zero, cannot compute percentage.")
+
+    # Sum "Current Value" where "Account Name" is "Individual - TOD"
+    sum_individual_tod = filtered_df_cash_fidelity.loc[
+        filtered_df_cash_fidelity["Account Name"] == "Individual - TOD", "Current Value"
+    ].sum()
+    print(f'Sum of cash in "Individual - TOD": ${sum_individual_tod:,.2f}')
+
+    # Sum "Current Value" where "Account Name" is "ROTH IRA"
+    sum_roth_ira = filtered_df_cash_fidelity.loc[
+        filtered_df_cash_fidelity["Account Name"] == "ROTH IRA", "Current Value"
+    ].sum()
+    print(f'Sum of cash in "ROTH IRA": ${sum_roth_ira:,.2f}')
+
+    # Sum "Current Value" where "Account Name" is "Traditional IRA"
+    sum_traditional_ira = filtered_df_cash_fidelity.loc[
+        filtered_df_cash_fidelity["Account Name"] == "Traditional IRA", "Current Value"
+    ].sum()
+    print(f'Sum of cash in "Traditional IRA": ${sum_traditional_ira:,.2f}\n')
 
 
     # Create a new 'Group' column: 'Cash' for cash descriptions, else use the original description
@@ -265,7 +283,7 @@ def main():
 
     # Sum the "Current Value" for the filtered DataFrame
     value_cash_charles = filtered_df_cash_charles["Current Value"].sum()
-    print(f"Total Current Value for {filter_list_cash_charles}: ${round(value_cash_charles):,}\n")
+    print(f"Total Current Value for {filter_list_cash_charles}: ${round(value_cash_charles):,}")
 
     # Calculate and print the percentage of value_cash_charles to total_current_value_charles
     if total_current_value_charles != 0:
@@ -273,6 +291,28 @@ def main():
         print(f"Cash as percentage of total: {percent_cash_charles:.2f}%\n")
     else:
         print("Total current value is zero, cannot compute percentage.")
+
+    # Cash value for individual account
+    mask_individual = (
+        (df_charles_clean["Account Name"] == "Designated_Bene_Individual ...901") &
+        (df_charles_clean["Symbol"] == "Cash & Cash Investments")
+    )
+    value_individual = df_charles_clean.loc[mask_individual, "Current Value"]
+    if not value_individual.empty:
+        print(f'Cash value for "Individual ...901": ${value_individual.values[0]:,.2f}')
+    else:
+        print('No value found for "Individual ...901" and "Cash & Cash Investments".')
+
+    # Cash value for ROTH IRA account
+    mask_roth_ira = (
+        (df_charles_clean["Account Name"] == "Roth_Contributory_IRA ...696") &
+        (df_charles_clean["Symbol"] == "Cash & Cash Investments")
+    )
+    value_roth_ira = df_charles_clean.loc[mask_roth_ira, "Current Value"]
+    if not value_roth_ira.empty:
+        print(f'Cash value for "ROTH IRA ...696": ${value_roth_ira.values[0]:,.2f}\n')
+    else:
+        print('No value found for "ROTH IRA ...696" and "Cash & Cash Investments".')
 
 
     # Create a new 'Group' column: 'Cash' for cash symbols, else use the original symbol

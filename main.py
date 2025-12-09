@@ -1,5 +1,19 @@
 import pandas as pd
 import os
+import io
+
+
+def read_csv_no_trailing_commas(path: str) -> pd.DataFrame:
+    with open(path, "r", encoding="latin1") as f:
+        cleaned = []
+        for line in f:
+            stripped = line.rstrip("\r\n")
+            if stripped.endswith(","):
+                stripped = stripped[:-1]
+            cleaned.append(stripped + "\n")
+    df = pd.read_csv(io.StringIO("".join(cleaned)), engine="python", skip_blank_lines=True)
+    df = df.loc[:, ~df.columns.str.contains(r"^Unnamed")]
+    return df
 
 
 def main():
@@ -13,7 +27,7 @@ def main():
         return
 
     file_path = os.path.join(data_dir, files[0])
-    df_fidelity = pd.read_csv(file_path, encoding='latin1', skip_blank_lines=True)
+    df_fidelity = read_csv_no_trailing_commas(file_path)
     # Remove non-ASCII characters from column names
     df_fidelity.columns = df_fidelity.columns.str.strip().str.replace(r"[^\x00-\x7F]+", "", regex=True)
     # print(df_fidelity.head())
@@ -127,7 +141,7 @@ def main():
         return
 
     file_path = os.path.join(data_dir, files[0])
-    df_fidelity = pd.read_csv(file_path, encoding='latin1', skip_blank_lines=True)
+    df_fidelity = read_csv_no_trailing_commas(file_path)
     # Remove non-ASCII characters from column names
     df_fidelity.columns = df_fidelity.columns.str.strip().str.replace(r"[^\x00-\x7F]+", "", regex=True)
     # print(df_fidelity.head())
@@ -235,7 +249,7 @@ def main():
         # Find the row with 'Symbol' in the first column
         if str(df_charles.iloc[i, 0]).strip() == "Symbol":
             # Account name is in the row above
-            account_name = str(df_charles.iloc[i - 1, 0]).strip() if i > 0 else ""
+            account_name = str(df_charles.iloc[i - 2, 0]).strip() if i > 1 else ""
             # Header row
             header = df_charles.iloc[i].tolist()
             # Find the next block or end of DataFrame
@@ -299,9 +313,21 @@ def main():
     )
     value_individual = df_charles_clean.loc[mask_individual, "Current Value"]
     if not value_individual.empty:
-        print(f'Cash value for "Individual ...901": ${value_individual.values[0]:,.2f}')
+        print(f'Cash value in "Individual ...901": ${value_individual.values[0]:,.2f}')
     else:
         print('No value found for "Individual ...901" and "Cash & Cash Investments".')
+
+    # Check for SGVT or SGOV in "Designated_Bene_Individual ...901"
+    mask_sgvt_sgov_individual = (
+        (df_charles_clean["Account Name"] == "Designated_Bene_Individual ...901") &
+        (df_charles_clean["Symbol"].isin(["SGVT", "SGOV"]))
+    )
+    value_sgvt_sgov_individual = df_charles_clean.loc[mask_sgvt_sgov_individual, ["Symbol", "Current Value"]]
+    if not value_sgvt_sgov_individual.empty:
+        for _, row in value_sgvt_sgov_individual.iterrows():
+            print(f'"{row["Symbol"]}" value in "Individual ...901": ${row["Current Value"]:,.2f}\n')
+    else:
+        print('No "SGVT" or "SGOV" value found in "Individual ...901"\n')
 
     # Cash value for ROTH IRA account
     mask_roth_ira = (
@@ -310,9 +336,21 @@ def main():
     )
     value_roth_ira = df_charles_clean.loc[mask_roth_ira, "Current Value"]
     if not value_roth_ira.empty:
-        print(f'Cash value for "ROTH IRA ...696": ${value_roth_ira.values[0]:,.2f}\n')
+        print(f'Cash value in "ROTH IRA ...696": ${value_roth_ira.values[0]:,.2f}')
     else:
         print('No value found for "ROTH IRA ...696" and "Cash & Cash Investments".')
+
+    # Check for SGVT or SGOV in "Roth_Contributory_IRA ...696"
+    mask_sgvt_sgov_roth = (
+        (df_charles_clean["Account Name"] == "Roth_Contributory_IRA ...696") &
+        (df_charles_clean["Symbol"].isin(["SGVT", "SGOV"]))
+    )
+    value_sgvt_sgov_roth = df_charles_clean.loc[mask_sgvt_sgov_roth, ["Symbol", "Current Value"]]
+    if not value_sgvt_sgov_roth.empty:
+        for _, row in value_sgvt_sgov_roth.iterrows():
+            print(f'"{row["Symbol"]}" value in "ROTH IRA ...696": ${row["Current Value"]:,.2f}\n')
+    else:
+        print('No "SGVT" or "SGOV" value found in "ROTH IRA ...696".\n')
 
 
     # Create a new 'Group' column: 'Cash' for cash symbols, else use the original symbol
